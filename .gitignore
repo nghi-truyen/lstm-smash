@@ -1,8 +1,6 @@
 **/__pycache__
 __pycache__
 
-notebook-*
-
 draft*
 
 data-*
@@ -10,3 +8,5 @@ data-*
 nets*
 
 models*
+
+res-*
