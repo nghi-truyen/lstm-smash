@@ -1,6 +1,7 @@
 import smash
 
 import os
+import argparse
 
 import numpy as np
 import pandas as pd
@@ -8,18 +9,43 @@ import pandas as pd
 from tools import model_to_df, feature_engineering, df_to_network_in, lstm_net
 
 
-# = DEFINE CONSTANTS ==
-# =====================
+# = ARGUMENT PARSER ==
+# ====================
 
-PATH_NET = "net"
-PATH_FILEMODEL = "models/ardeche-test.hdf5"
-PATH_FILEOUT = "res/predict-test.csv"
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "-pm",
+    "-path_filemodel",
+    "--path_filemodel",
+    type=str,
+    help="Select the smash Model object to correct",
+)
+
+parser.add_argument(
+    "-pn",
+    "-path_net",
+    "--path_net",
+    type=str,
+    help="Select the trained neural network to correct the Model object",
+)
+
+parser.add_argument(
+    "-pno",
+    "-path_fileout",
+    "--path_fileout",
+    type=str,
+    default=f"{os.getcwd()}/res-predict.csv",
+    help="[optional] Select path for the output file",
+)
+
+args = parser.parse_args()
 
 # = PRE-PROCESSING DATA ==
 # ========================
 
 # % Read model to csv and feature engineering
-model = smash.io.read_model(PATH_FILEMODEL)
+model = smash.io.read_model(args.path_filemodel)
 df = model_to_df(model, target_mode=False)
 df = feature_engineering(df)
 
@@ -35,15 +61,15 @@ pred, _ = df_to_network_in(pred_set, target_mode=False)
 # = WRITE CORRECTED FILES ==
 # ==========================
 
-os.makedirs(os.path.dirname(PATH_FILEOUT), exist_ok=True)
+os.makedirs(os.path.dirname(args.path_fileout), exist_ok=True)
 
-k_fold = len([f for f in os.listdir(PATH_NET) if f.endswith(".index")])
+k_fold = len([f for f in os.listdir(args.path_net) if f.endswith(".index")])
 
 nets = []
 
 for fold in range(k_fold):
     net = lstm_net(pred.shape[-2:])
-    net.load_weights(os.path.join(PATH_NET, f"fold_{fold + 1}"))
+    net.load_weights(os.path.join(args.path_net, f"fold_{fold + 1}"))
     nets.append(net)
 
 y_pred = np.mean([net.predict(pred) for net in nets], axis=0)
@@ -54,4 +80,4 @@ df_pred = pd.DataFrame(
         "bias": y_pred.flatten(),
     }
 )
-df_pred.to_csv(PATH_FILEOUT, index=False)
+df_pred.to_csv(args.path_fileout, index=False)

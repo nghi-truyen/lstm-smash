@@ -1,15 +1,12 @@
 import smash
 
 import os
-
-import numpy as np
-import pandas as pd
+import argparse
 
 from tools import model_to_df, feature_engineering, df_to_network_in, lstm_net
 
 import tensorflow as tf
 from sklearn.model_selection import KFold
-
 
 # % Check version and GPU
 print("Tensorflow version: ", tf.__version__)
@@ -19,26 +16,81 @@ print(
     tf.test.is_gpu_available(cuda_only=False, min_cuda_compute_capability=None),
 )
 
-# = DEFINE CONSTANTS ==
-# =====================
 
-# % Paths
-PATH_FILEMODEL = "models/ardeche-train.hdf5"
-PATH_NETOUT = "net"
+# = ARGUMENT PARSER ==
+# ====================
 
-# % Training parameters
-EPOCH = 200
-BATCH_SIZE = 512
-K_FOLD = 5
+parser = argparse.ArgumentParser()
 
-OPTIMIZER = "adam"
-LOSS = "mse"
+parser.add_argument(
+    "-pm",
+    "-path_filemodel",
+    "--path_filemodel",
+    type=str,
+    help="Select the smash Model object",
+)
+
+parser.add_argument(
+    "-pn",
+    "-path_netout",
+    "--path_netout",
+    type=str,
+    default=f"{os.getcwd()}/net",
+    help="[optional] Select the output directory for the trained neural network",
+)
+
+parser.add_argument(
+    "-e",
+    "-epoch",
+    "--epoch",
+    type=int,
+    default=200,
+    help="[optional] Select the number of epochs for training",
+)
+
+parser.add_argument(
+    "-bs",
+    "-batch_size",
+    "--batch_size",
+    type=int,
+    default=512,
+    help="[optional] Select the batch size for training",
+)
+
+parser.add_argument(
+    "-k",
+    "-kfold",
+    "--kfold",
+    type=int,
+    default=3,
+    help="[optional] Select the number of folds for cross-validation",
+)
+
+parser.add_argument(
+    "-o",
+    "-optimizer",
+    "--optimizer",
+    type=str,
+    help="[optional] Select the optimization algorithm",
+    default="adam",
+)
+
+parser.add_argument(
+    "-l",
+    "-loss",
+    "--loss",
+    type=str,
+    help="[optional] Select the loss function for optimization",
+    default="mse",
+)
+
+args = parser.parse_args()
 
 # = PRE-PROCESSING DATA ==
 # ========================
 
 # % Read model to csv and feature engineering
-model = smash.io.read_model(PATH_FILEMODEL)
+model = smash.io.read_model(args.path_filemodel)
 df = model_to_df(model)
 df = feature_engineering(df)
 
@@ -55,7 +107,7 @@ train, target = df_to_network_in(train_set)
 strategy = tf.distribute.MirroredStrategy()
 
 with strategy.scope():
-    kf = KFold(n_splits=K_FOLD, shuffle=True)
+    kf = KFold(n_splits=args.kfold, shuffle=True)
     for fold, (train_idx, valid_idx) in enumerate(
         kf.split(train, target)
     ):  # Cross Validation Training
@@ -65,15 +117,15 @@ with strategy.scope():
         y_train, y_valid = target[train_idx], target[valid_idx]
 
         net = lstm_net(train.shape[-2:])
-        net.compile(optimizer=OPTIMIZER, loss=LOSS)
+        net.compile(optimizer=args.optimizer, loss=args.loss)
 
         scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            1e-3, 100 * ((train.shape[0] * 0.8) / BATCH_SIZE), 1e-5
+            1e-3, 100 * ((train.shape[0] * 0.8) / args.batch_size), 1e-5
         )
         lr = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
         cp = tf.keras.callbacks.ModelCheckpoint(
-            filepath=os.path.join(PATH_NETOUT, f"fold_{fold + 1}"),
+            filepath=os.path.join(args.path_netout, f"fold_{fold + 1}"),
             save_weights_only=True,
             mode="min",
             save_best_only=True,
@@ -83,7 +135,7 @@ with strategy.scope():
             X_train,
             y_train,
             validation_data=(X_valid, y_valid),
-            epochs=EPOCH,
-            batch_size=BATCH_SIZE,
+            epochs=args.epoch,
+            batch_size=args.batch_size,
             callbacks=[lr, cp],
         )
