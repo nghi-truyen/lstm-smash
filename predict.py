@@ -31,7 +31,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-pno",
+    "-po",
     "-path_fileout",
     "--path_fileout",
     type=str,
@@ -53,15 +53,16 @@ df = feature_engineering(df)
 missing = df[df.isna().any(axis=1)]["timestep"].unique()
 pred_set = df[~df.timestep.isin(missing)]
 
-print(pred_set)
-
 # % Normalize and prepare inputs for the network
 pred, _ = df_to_network_in(pred_set, target_mode=False)
 
 # = WRITE CORRECTED FILES ==
 # ==========================
 
-os.makedirs(os.path.dirname(args.path_fileout), exist_ok=True)
+try:
+    os.makedirs(os.path.dirname(args.path_fileout), exist_ok=True)
+except:
+    pass
 
 k_fold = len([f for f in os.listdir(args.path_net) if f.endswith(".index")])
 
