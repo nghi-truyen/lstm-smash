@@ -10,7 +10,7 @@ from datetime import timedelta
 
 def model_to_df(
     model: smash.Model,
-    target_present: bool = True,
+    target_mode: bool = True,
     precip: bool = True,
     pot_evapot: bool = True,
     precip_ind: bool = True,
@@ -42,7 +42,7 @@ def model_to_df(
     dict_df["discharge_sim"] = qs.flatten(order="F")
 
     # % Bias
-    if target_present:
+    if target_mode:
         qo = model.obs_response.q.copy()
         qo[qo < 0] = np.nan
         bias = qo - qs
@@ -120,7 +120,7 @@ def feature_engineering(df: pd.DataFrame):
     return df
 
 
-def df_to_network_in(df: pd.DataFrame, target_present: bool = True):
+def df_to_network_in(df: pd.DataFrame, target_mode: bool = True):
     """
     Normalize data and prepare input for the neural network.
     """
@@ -129,7 +129,7 @@ def df_to_network_in(df: pd.DataFrame, target_present: bool = True):
     # % Drop info columns
     df = df.drop(["code", "timestep"], axis=1)
 
-    if target_present:
+    if target_mode:
         # check if 'bias' is already the last column
         if df.columns[-1] != "bias":
             columns = [col for col in df.columns if col != "bias"]
