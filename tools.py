@@ -38,12 +38,12 @@ def model_to_df(
     dict_df["timestep_in_year"] = tsy
 
     # % Simumated discharges
-    qs = model.sim_response.q
+    qs = model.response.q
     dict_df["discharge_sim"] = qs.flatten(order="F")
 
     # % Bias
     if target_mode:
-        qo = model.obs_response.q.copy()
+        qo = model.response_data.q.copy()
         qo[qo < 0] = np.nan
         bias = qo - qs
         dict_df["bias"] = bias.flatten(order="F")
@@ -160,15 +160,27 @@ def lstm_net(input_shape):
 
     net.add(
         tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(64, input_shape=input_shape, return_sequences=True)
+            tf.keras.layers.LSTM(
+                64,
+                input_shape=input_shape,
+                activation="relu",
+                recurrent_regularizer=tf.keras.regularizers.l2(8e-3),
+                return_sequences=True,
+            )
         )
     )
-    net.add(tf.keras.layers.Dropout(0.2))
     net.add(
-        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True))
+        tf.keras.layers.Bidirectional(
+            tf.keras.layers.LSTM(
+                64,
+                activation="relu",
+                recurrent_regularizer=tf.keras.regularizers.l2(8e-3),
+                return_sequences=True,
+            )
+        )
     )
+    net.add(tf.keras.layers.Dense(32, activation="selu"))
     net.add(tf.keras.layers.Dropout(0.2))
-    net.add(tf.keras.layers.Dense(16, activation="selu"))
     net.add(tf.keras.layers.Dense(1))
 
     return net
