@@ -1,12 +1,14 @@
 **/__pycache__
 __pycache__
 
+**/draft*
 draft*
 
+**/data-*
 data-*
 
-nets*
+net*
 
 models*
 
-res-*
+res*
