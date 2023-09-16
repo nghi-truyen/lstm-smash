@@ -26,7 +26,6 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument(
     "-pm",
-    "-path_filemodel",
     "--path_filemodel",
     type=str,
     help="Select the smash Model object to correct",
@@ -34,7 +33,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-pn",
-    "-path_net",
     "--path_net",
     type=str,
     help="Select the trained neural network to correct the Model object",
@@ -42,7 +40,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-po",
-    "-path_fileout",
     "--path_fileout",
     type=str,
     default=f"{os.getcwd()}/res-predict.csv",
@@ -51,7 +48,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-bs",
-    "-batch_size",
     "--batch_size",
     type=int,
     default=512,

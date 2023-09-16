@@ -5,27 +5,24 @@ python3 train.py -pm demo-data/model-p1.hdf5 -pn demo-net -e 120 -k 3 -bs 1024
 ```
 
 ```bash
-usage: train.py [-h] [-pm PATH_FILEMODEL] [-pn PATH_NETOUT] [-e EPOCH]
-                [-bs BATCH_SIZE] [-k KFOLD] [-o OPTIMIZER] [-l LOSS]
+usage: train.py [-h] [-pm PATH_FILEMODEL] [-pn PATH_NETOUT] [-e EPOCH] 
+                     [-bs BATCH_SIZE] [-k KFOLD] [-o OPTIMIZER] [-l LOSS]
 
 options:
   -h, --help            show this help message and exit
-  -pm PATH_FILEMODEL, -path_filemodel PATH_FILEMODEL, --path_filemodel PATH_FILEMODEL
+  -pm PATH_FILEMODEL, --path_filemodel PATH_FILEMODEL
                         Select the smash Model object
-  -pn PATH_NETOUT, -path_netout PATH_NETOUT, --path_netout PATH_NETOUT
-                        [optional] Select the output directory for the trained
-                        neural network
-  -e EPOCH, -epoch EPOCH, --epoch EPOCH
+  -pn PATH_NETOUT, --path_netout PATH_NETOUT
+                        [optional] Select the output directory for the trained neural network
+  -e EPOCH, --epoch EPOCH
                         [optional] Select the number of epochs for training
-  -bs BATCH_SIZE, -batch_size BATCH_SIZE, --batch_size BATCH_SIZE
+  -bs BATCH_SIZE, --batch_size BATCH_SIZE
                         [optional] Select the batch size for training
-  -k KFOLD, -kfold KFOLD, --kfold KFOLD
-                        [optional] Select the number of folds for cross-
-                        validation
-  -o OPTIMIZER, -optimizer OPTIMIZER, --optimizer OPTIMIZER
+  -k KFOLD, --kfold KFOLD
+                        [optional] Select the number of folds for cross-validation
+  -o OPTIMIZER, --optimizer OPTIMIZER
                         [optional] Select the optimization algorithm
-  -l LOSS, -loss LOSS, --loss LOSS
-                        [optional] Select the loss function for optimization
+  -l LOSS, --loss LOSS  [optional] Select the loss function for optimization
 ```
 
 # Prediction
@@ -35,17 +32,18 @@ python3 predict.py -pm demo-data/model-p2.hdf5 -pn demo-net -po pred-p2.csv
 ```
 
 ```bash
-usage: predict.py [-h] [-pm PATH_FILEMODEL] [-pn PATH_NET] [-po PATH_FILEOUT]
+usage: predict.py [-h] [-pm PATH_FILEMODEL] [-pn PATH_NET] [-po PATH_FILEOUT] [-bs BATCH_SIZE]
 
 options:
   -h, --help            show this help message and exit
-  -pm PATH_FILEMODEL, -path_filemodel PATH_FILEMODEL, --path_filemodel PATH_FILEMODEL
+  -pm PATH_FILEMODEL, --path_filemodel PATH_FILEMODEL
                         Select the smash Model object to correct
-  -pn PATH_NET, -path_net PATH_NET, --path_net PATH_NET
-                        Select the trained neural network to correct the Model
-                        object
-  -po PATH_FILEOUT, -path_fileout PATH_FILEOUT, --path_fileout PATH_FILEOUT
+  -pn PATH_NET, --path_net PATH_NET
+                        Select the trained neural network to correct the Model object
+  -po PATH_FILEOUT, --path_fileout PATH_FILEOUT
                         [optional] Select path for the output file
+  -bs BATCH_SIZE, --batch_size BATCH_SIZE
+                        [optional] Select the batch size for predicting
 ```
 
 # Validation Results

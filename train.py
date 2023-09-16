@@ -24,7 +24,6 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument(
     "-pm",
-    "-path_filemodel",
     "--path_filemodel",
     type=str,
     help="Select the smash Model object",
@@ -32,7 +31,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-pn",
-    "-path_netout",
     "--path_netout",
     type=str,
     default=f"{os.getcwd()}/net",
@@ -41,7 +39,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-e",
-    "-epoch",
     "--epoch",
     type=int,
     default=200,
@@ -50,7 +47,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-bs",
-    "-batch_size",
     "--batch_size",
     type=int,
     default=512,
@@ -59,7 +55,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-k",
-    "-kfold",
     "--kfold",
     type=int,
     default=4,
@@ -68,7 +63,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-o",
-    "-optimizer",
     "--optimizer",
     type=str,
     help="[optional] Select the optimization algorithm",
@@ -77,7 +71,6 @@ parser.add_argument(
 
 parser.add_argument(
     "-l",
-    "-loss",
     "--loss",
     type=str,
     help="[optional] Select the loss function for optimization",
