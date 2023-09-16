@@ -48,7 +48,7 @@ def model_to_df(
         bias = qo - qs
         dict_df["bias"] = bias.flatten(order="F")
 
-    # % Mean Precipitation
+    # % Mean precipitation
     if precip:
         prcp = model.atmos_data.mean_prcp.copy()
         prcp[prcp < 0] = np.nan
@@ -108,14 +108,25 @@ def feature_engineering(df: pd.DataFrame):
     Perform feature engineering from the raw DataFrame.
     """
     df["year"] = df["timestep"] // np.max(df["timestep_in_year"])
+    drop_cols = ["year"]
 
-    df["precipitation_cumsum"] = df.groupby(["code", "year"])["precipitation"].cumsum()
-    df["pet_cumsum"] = df.groupby(["code", "year"])["pet"].cumsum()
     df["discharge_sim_cumsum"] = df.groupby(["code", "year"])["discharge_sim"].cumsum()
 
-    df["sqrt_pet"] = np.sqrt(df["pet"])
+    try:
+        df["precipitation_cumsum"] = df.groupby(["code", "year"])[
+            "precipitation"
+        ].cumsum()
+    except:
+        pass
 
-    df = df.drop(["year", "pet"], axis=1)
+    try:
+        df["pet_cumsum"] = df.groupby(["code", "year"])["pet"].cumsum()
+        df["sqrt_pet"] = np.sqrt(df["pet"])
+        drop_cols.append("pet")
+    except:
+        pass
+
+    df = df.drop(drop_cols, axis=1)
 
     return df
 
@@ -161,10 +172,10 @@ def lstm_net(input_shape):
     net.add(
         tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(
-                64,
+                128,
                 input_shape=input_shape,
                 activation="relu",
-                recurrent_regularizer=tf.keras.regularizers.l2(8e-3),
+                recurrent_regularizer=tf.keras.regularizers.l2(6e-3),
                 return_sequences=True,
             )
         )
@@ -174,13 +185,13 @@ def lstm_net(input_shape):
             tf.keras.layers.LSTM(
                 64,
                 activation="relu",
-                recurrent_regularizer=tf.keras.regularizers.l2(8e-3),
+                recurrent_regularizer=tf.keras.regularizers.l2(6e-3),
                 return_sequences=True,
             )
         )
     )
     net.add(tf.keras.layers.Dense(32, activation="selu"))
-    net.add(tf.keras.layers.Dropout(0.2))
+    net.add(tf.keras.layers.Dropout(0.1))
     net.add(tf.keras.layers.Dense(1))
 
     return net

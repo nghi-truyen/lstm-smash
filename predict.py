@@ -8,6 +8,16 @@ import pandas as pd
 
 from tools import model_to_df, feature_engineering, df_to_network_in, lstm_net
 
+import tensorflow as tf
+
+# % Check version and GPU
+print("Tensorflow version: ", tf.__version__)
+
+print(
+    "GPU avialable: ",
+    tf.test.is_gpu_available(cuda_only=False, min_cuda_compute_capability=None),
+)
+
 
 # = ARGUMENT PARSER ==
 # ====================
@@ -39,6 +49,15 @@ parser.add_argument(
     help="[optional] Select path for the output file",
 )
 
+parser.add_argument(
+    "-bs",
+    "-batch_size",
+    "--batch_size",
+    type=int,
+    default=512,
+    help="[optional] Select the batch size for predicting",
+)
+
 args = parser.parse_args()
 
 # = PRE-PROCESSING DATA ==
@@ -56,8 +75,8 @@ pred_set = df[~df.timestep.isin(missing)]
 # % Normalize and prepare inputs for the network
 pred, _ = df_to_network_in(pred_set, target_mode=False)
 
-# = WRITE CORRECTED FILES ==
-# ==========================
+# = PREDICT ==
+# ============
 
 try:
     os.makedirs(os.path.dirname(args.path_fileout), exist_ok=True)
@@ -68,12 +87,20 @@ k_fold = len([f for f in os.listdir(args.path_net) if f.endswith(".index")])
 
 nets = []
 
-for fold in range(k_fold):
-    net = lstm_net(pred.shape[-2:])
-    net.load_weights(os.path.join(args.path_net, f"fold_{fold + 1}"))
-    nets.append(net)
+# % Predict with tf session
+strategy = tf.distribute.MirroredStrategy()
 
-y_pred = np.mean([net.predict(pred) for net in nets], axis=0)
+with strategy.scope():
+    for fold in range(k_fold):
+        net = lstm_net(pred.shape[-2:])
+        net.load_weights(os.path.join(args.path_net, f"fold_{fold + 1}"))
+        nets.append(net)
+
+    y_pred = np.mean(
+        [net.predict(pred, batch_size=args.batch_size) for net in nets], axis=0
+    )
+
+# % Write results to csv file
 df_pred = pd.DataFrame(
     {
         "code": pred_set["code"],
