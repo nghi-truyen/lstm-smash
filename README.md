@@ -72,5 +72,5 @@ print("Corrected model KGE: ", smash.metrics(model_correct, "kge"))
 ```
 ```bash
 Original model KGE:  [0.72716784 0.38292903 0.68023837 0.59912944]
-Corrected model KGE:  [0.8501699  0.65304428 0.87734497 0.75718623]
+Corrected model KGE:  [0.85017586 0.65304232 0.87735885 0.75716603]
 ```
