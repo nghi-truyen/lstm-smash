@@ -28,7 +28,7 @@ options:
 # Prediction
 
 ```bash
-python3 predict.py -pm demo-data/model-p2.hdf5 -pn demo-net -po pred-p2.csv
+python3 predict.py -pm demo-data/model-p2.hdf5 -pn demo-net -po bias-p2.csv
 ```
 
 ```bash
@@ -56,15 +56,12 @@ def correct_bias(model: smash.Model, df: pd.DataFrame):
     model_correct = model.copy()
 
     for i, code in enumerate(model.mesh.code):
-        if code in df["code"].values:
-            df_code = df[df["code"] == code]
-            model_correct.response.q[i, df_code["timestep"].values] += df_code[
-                "bias"
-            ].values
+        if code in df.columns[1:]:
+            model_correct.response.q[i, df["timestep"].values] += df[code].values
 
     return model_correct
 
-df = pd.read_csv("pred-p2.csv")
+df = pd.read_csv("bias-p2.csv")
 model = smash.io.read_model("demo-data/model-p2.hdf5")
 model_correct = correct_bias(model, df)
 ```
@@ -75,5 +72,5 @@ print("Corrected model KGE: ", smash.metrics(model_correct, "kge"))
 ```
 ```bash
 Original model KGE:  [0.72716784 0.38292903 0.68023837 0.59912944]
-Corrected model KGE:  [0.85017586 0.65304232 0.87735885 0.75716603]
+Corrected model KGE:  [0.8501699  0.65304428 0.87734497 0.75718623]
 ```

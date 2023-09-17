@@ -42,7 +42,7 @@ parser.add_argument(
     "-po",
     "--path_fileout",
     type=str,
-    default=f"{os.getcwd()}/res-predict.csv",
+    default=f"{os.getcwd()}/bias-pred.csv",
     help="[optional] Select path for the output file",
 )
 
@@ -104,4 +104,5 @@ df_pred = pd.DataFrame(
         "bias": y_pred.flatten(),
     }
 )
+df_pred = df_pred.pivot(index="timestep", columns="code", values="bias").reset_index()
 df_pred.to_csv(args.path_fileout, index=False)
