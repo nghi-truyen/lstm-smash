@@ -54,10 +54,12 @@ import pandas as pd
 
 def correct_bias(model: smash.Model, df: pd.DataFrame):
     model_correct = model.copy()
+    q = model_correct.response.q
 
     for i, code in enumerate(model.mesh.code):
         if code in df.columns[1:]:
-            model_correct.response.q[i, df["timestep"].values] += df[code].values
+            q[i, df["timestep"].values] += df[code].values
+            q[i, q[i]<0] = 0  # Handle negative values of corrected discharges
 
     return model_correct
 
@@ -72,5 +74,5 @@ print("Corrected model KGE: ", smash.metrics(model_correct, "kge"))
 ```
 ```bash
 Original model KGE:  [0.72716784 0.38292903 0.68023837 0.59912944]
-Corrected model KGE:  [0.85017586 0.65304232 0.87735885 0.75716603]
+Corrected model KGE:  [0.849549   0.65314811 0.84928393 0.77253556]
 ```
