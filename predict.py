@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from tools import model_to_df, feature_engineering, df_to_network_in, lstm_net
+from tools import model_to_df, feature_engineering, df_to_network_in, build_lstm
 
 import tensorflow as tf
 
@@ -88,20 +88,22 @@ strategy = tf.distribute.MirroredStrategy()
 
 with strategy.scope():
     for fold in range(k_fold):
-        net = lstm_net(pred.shape[-2:])
+        net = build_lstm(pred.shape[-2:])
         net.load_weights(os.path.join(args.path_net, f"fold_{fold + 1}"))
         nets.append(net)
 
     y_pred = np.mean(
         [net.predict(pred, batch_size=args.batch_size) for net in nets], axis=0
-    )
+    ).reshape(-1, 2)
+
+bias = np.random.normal(y_pred[:, 0], np.abs(y_pred[:, 1]))
 
 # % Write results to csv file
 df_pred = pd.DataFrame(
     {
         "code": pred_set["code"],
         "timestep": pred_set["timestep"],
-        "bias": y_pred.flatten(),
+        "bias": bias,
     }
 )
 df_pred = df_pred.pivot(index="timestep", columns="code", values="bias").reset_index()

@@ -3,7 +3,13 @@ import smash
 import os
 import argparse
 
-from tools import model_to_df, feature_engineering, df_to_network_in, lstm_net
+from tools import (
+    model_to_df,
+    feature_engineering,
+    df_to_network_in,
+    build_lstm,
+    log_lkh,
+)
 
 import tensorflow as tf
 from sklearn.model_selection import KFold
@@ -65,16 +71,24 @@ parser.add_argument(
     "-o",
     "--optimizer",
     type=str,
-    help="[optional] Select the optimization algorithm",
     default="adam",
+    help="[optional] Select the optimization algorithm",
+)
+
+parser.add_argument(
+    "-ilr",
+    "--init_lr",
+    type=float,
+    default=1e-3,
+    help="[optional] Select the value of initial learning rate",
 )
 
 parser.add_argument(
     "-l",
     "--loss",
     type=str,
-    help="[optional] Select the loss function for optimization",
-    default="mse",
+    default="log_lkh",
+    help="[optional] Select the loss function to train the neural network",
 )
 
 args = parser.parse_args()
@@ -109,11 +123,14 @@ with strategy.scope():
         X_train, X_valid = train[train_idx], train[valid_idx]
         y_train, y_valid = target[train_idx], target[valid_idx]
 
-        net = lstm_net(train.shape[-2:])
-        net.compile(optimizer=args.optimizer, loss=args.loss)
+        net = build_lstm(train.shape[-2:])
+        net.compile(
+            optimizer=args.optimizer,
+            loss=log_lkh if args.loss.lower() == "log_lkh" else args.loss,
+        )
 
         scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            1e-3, 100 * ((train.shape[0] * 0.8) / args.batch_size), 1e-5
+            args.init_lr, 100 * ((train.shape[0] * 0.8) / args.batch_size), 1e-5
         )
         lr = tf.keras.callbacks.LearningRateScheduler(scheduler)
 

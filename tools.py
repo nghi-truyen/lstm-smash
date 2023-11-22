@@ -47,6 +47,7 @@ def model_to_df(
         qo[qo < 0] = np.nan
         bias = qo - qs
         dict_df["bias"] = bias.flatten(order="F")
+        dict_df["std_bias"] = np.zeros(bias.size)
 
     # % Mean precipitation
     if precip:
@@ -141,16 +142,16 @@ def df_to_network_in(df: pd.DataFrame, target_mode: bool = True):
     df = df.drop(["code", "timestep"], axis=1)
 
     if target_mode:
-        # check if 'bias' is already the last column
-        if df.columns[-1] != "bias":
-            columns = [col for col in df.columns if col != "bias"]
-            columns.append("bias")
+        # check if 'bias' and 'std_bias' are already located in the last 2 columns
+        if df.columns[-2] != "bias" or df.columns[-1] != "std_bias":
+            columns = [col for col in df.columns if not "bias" in col]
+            columns = np.append(columns, ("bias", "std_bias"))
             df = df[columns]
 
         # convert to numpy array
-        data = df.to_numpy()[..., :-1]
-        target = df.to_numpy()[..., -1]
-        target = target.reshape(-1, n_catch)
+        data = df.to_numpy()[..., :-2]
+        target = df.to_numpy()[..., -2:]
+        target = target.reshape(-1, n_catch, 2)
 
     else:
         data = df.to_numpy()
@@ -163,7 +164,14 @@ def df_to_network_in(df: pd.DataFrame, target_mode: bool = True):
     return data, target
 
 
-def lstm_net(input_shape):
+def log_lkh(y_true, y_pred):
+    return -tf.reduce_mean(
+        tf.math.log(1 / (tf.abs(y_pred[..., 1]) * tf.sqrt(2 * np.pi)))
+        - 0.5 * tf.square((y_true[..., 0] - y_pred[..., 0]) / y_pred[..., 1])
+    )
+
+
+def build_lstm(input_shape):
     """
     The LSTM neural network for learning streamflow prediction error.
     """
@@ -192,6 +200,6 @@ def lstm_net(input_shape):
     )
     net.add(tf.keras.layers.Dense(32, activation="selu"))
     net.add(tf.keras.layers.Dropout(0.1))
-    net.add(tf.keras.layers.Dense(1))
+    net.add(tf.keras.layers.Dense(2))
 
     return net
