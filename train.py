@@ -44,6 +44,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "-ss",
+    "--sequence_size",
+    type=int,
+    default=10,
+    help="[optional] Select the squence size of inputs in LSTM network",
+)
+
+parser.add_argument(
     "-e",
     "--epoch",
     type=int,
@@ -93,20 +101,23 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+gauge_train = ["K2064010", "V5015210", "V5004030"]
+
+
 # = PRE-PROCESSING DATA ==
 # ========================
 
 # % Read model to csv and feature engineering
 model = smash.io.read_model(args.path_filemodel)
-df = model_to_df(model)
+df = model_to_df(model, args.sequence_size, gauge=gauge_train)
 df = feature_engineering(df)
 
 # % Handle missing data
-missing = df[df.isna().any(axis=1)]["timestep"].unique()
-train_set = df[~df.timestep.isin(missing)]
+missing = df[df.isna().any(axis=1)]["id"].unique()
+train_set = df[~df.id.isin(missing)]
 
 # % Normalize and prepare inputs for the network
-train, target = df_to_network_in(train_set)
+train, target = df_to_network_in(train_set, args.sequence_size)
 
 # = TRAINING ==
 # =============
