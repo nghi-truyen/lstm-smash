@@ -18,7 +18,7 @@ from sklearn.model_selection import KFold
 print("Tensorflow version: ", tf.__version__)
 
 print(
-    "GPU avialable: ",
+    "GPU available: ",
     tf.test.is_gpu_available(cuda_only=False, min_cuda_compute_capability=None),
 )
 
@@ -41,6 +41,15 @@ parser.add_argument(
     type=str,
     default=f"{os.getcwd()}/net",
     help="[optional] Select the output directory for the trained neural network",
+)
+
+parser.add_argument(
+    "-gp",
+    "--gaussian_parameters",
+    type=str,
+    default="std",
+    choices=["mean", "std", "both"],
+    help="[optional] Select the Gaussian parameters to be optimized",
 )
 
 parser.add_argument(
@@ -96,12 +105,23 @@ parser.add_argument(
     "--loss",
     type=str,
     default="log_lkh",
+    choices=["log_lkh", "mse", "mae"],
     help="[optional] Select the loss function to train the neural network",
 )
 
 args = parser.parse_args()
+if args.loss == "log_lkh":
+    if args.gaussian_parameters == "mean":
+        raise ValueError(
+            "Cannot maximize the log likelihood function when std=0 (or gaussian_parameters=='mean')"
+        )
+else:
+    if args.gaussian_parameters == "std":
+        raise ValueError(
+            f"zero mean (or gaussian_parameters=='std') is not relevant for minimizing the {args.loss} loss function"
+        )
 
-gauge_train = ["K2064010", "V5015210", "V5004030"]
+# gauge_train = ["K2064010", "V5015210", "V5004030"]
 
 
 # = PRE-PROCESSING DATA ==
@@ -109,7 +129,8 @@ gauge_train = ["K2064010", "V5015210", "V5004030"]
 
 # % Read model to csv and feature engineering
 model = smash.io.read_model(args.path_filemodel)
-df = model_to_df(model, args.sequence_size, gauge=gauge_train)
+# df = model_to_df(model, args.sequence_size, target_mode=True, gauge=gauge_train)
+df = model_to_df(model, args.sequence_size, target_mode=True)
 df = feature_engineering(df)
 
 # % Handle missing data
@@ -117,7 +138,10 @@ missing = df[df.isna().any(axis=1)]["id"].unique()
 train_set = df[~df.id.isin(missing)]
 
 # % Normalize and prepare inputs for the network
-train, target = df_to_network_in(train_set, args.sequence_size)
+output_size = 2 if args.gaussian_parameters == "both" else 1
+train, target = df_to_network_in(
+    train_set, args.sequence_size, output_size, target_mode=True
+)
 
 # = TRAINING ==
 # =============
@@ -134,10 +158,10 @@ with strategy.scope():
         X_train, X_valid = train[train_idx], train[valid_idx]
         y_train, y_valid = target[train_idx], target[valid_idx]
 
-        net = build_lstm(train.shape[-2:])
+        net = build_lstm(train.shape[-2:], output_size)
         net.compile(
             optimizer=args.optimizer,
-            loss=log_lkh if args.loss.lower() == "log_lkh" else args.loss,
+            loss=log_lkh if args.loss == "log_lkh" else args.loss,
         )
 
         scheduler = tf.keras.optimizers.schedules.ExponentialDecay(

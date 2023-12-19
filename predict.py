@@ -14,7 +14,7 @@ import tensorflow as tf
 print("Tensorflow version: ", tf.__version__)
 
 print(
-    "GPU avialable: ",
+    "GPU available: ",
     tf.test.is_gpu_available(cuda_only=False, min_cuda_compute_capability=None),
 )
 
@@ -47,6 +47,15 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "-gp",
+    "--gaussian_parameters",
+    type=str,
+    default="std",
+    choices=["mean", "std", "both"],
+    help="[optional] The optimized Gaussian parameters",
+)
+
+parser.add_argument(
     "-ss",
     "--sequence_size",
     type=int,
@@ -64,7 +73,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-gauge_test = ["V4145210"]
+# gauge_test = ["V4145210"]
 
 
 # = PRE-PROCESSING DATA ==
@@ -72,7 +81,8 @@ gauge_test = ["V4145210"]
 
 # % Read model to csv and feature engineering
 model = smash.io.read_model(args.path_filemodel)
-df = model_to_df(model, args.sequence_size, target_mode=False, gauge=gauge_test)
+# df = model_to_df(model, args.sequence_size, gauge=gauge_test)
+df = model_to_df(model, args.sequence_size)
 df = feature_engineering(df)
 
 # % Handle missing data
@@ -80,7 +90,7 @@ missing = df[df.isna().any(axis=1)]["id"].unique()
 pred_set = df[~df.id.isin(missing)]
 
 # % Normalize and prepare inputs for the network
-pred, _ = df_to_network_in(pred_set, args.sequence_size, target_mode=False)
+pred, _ = df_to_network_in(pred_set, args.sequence_size)
 
 # = PREDICT ==
 # ============
@@ -89,6 +99,8 @@ try:
     os.makedirs(os.path.dirname(args.path_fileout), exist_ok=True)
 except:
     pass
+
+output_size = 2 if args.gaussian_parameters == "both" else 1
 
 k_fold = len([f for f in os.listdir(args.path_net) if f.endswith(".index")])
 
@@ -99,15 +111,20 @@ strategy = tf.distribute.MirroredStrategy()
 
 with strategy.scope():
     for fold in range(k_fold):
-        net = build_lstm(pred.shape[-2:])
+        net = build_lstm(pred.shape[-2:], output_size)
         net.load_weights(os.path.join(args.path_net, f"fold_{fold + 1}"))
         nets.append(net)
 
     y_pred = np.mean(
         [net.predict(pred, batch_size=args.batch_size) for net in nets], axis=0
-    ).reshape(-1, 2)
+    ).reshape(-1, output_size)
 
-bias = np.random.normal(y_pred[:, 0], np.abs(y_pred[:, 1]))
+if args.gaussian_parameters == "mean":
+    bias = y_pred[:, 0]
+elif args.gaussian_parameters == "std":
+    bias = np.random.normal(0, np.abs(y_pred[:, 0]))
+elif args.gaussian_parameters == "both":
+    bias = np.random.normal(y_pred[:, 0], np.abs(y_pred[:, 1]))
 
 # % Write results to csv file
 df_pred = pd.DataFrame(

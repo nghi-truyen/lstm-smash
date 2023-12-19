@@ -11,7 +11,7 @@ from datetime import timedelta
 def model_to_df(
     model: smash.Model,
     sequence_size: int,
-    target_mode: bool = True,
+    target_mode: bool = False,
     precip: bool = True,
     pot_evapot: bool = True,
     precip_ind: bool = True,
@@ -138,7 +138,12 @@ def feature_engineering(df: pd.DataFrame):
     return df
 
 
-def df_to_network_in(df: pd.DataFrame, sequence_size: int, target_mode: bool = True):
+def df_to_network_in(
+    df: pd.DataFrame,
+    sequence_size: int,
+    output_size: int | None = None,
+    target_mode: bool = False,
+):
     """
     Normalize data and prepare input for the neural network.
     """
@@ -154,8 +159,11 @@ def df_to_network_in(df: pd.DataFrame, sequence_size: int, target_mode: bool = T
 
         # convert to numpy array
         data = df.to_numpy()[..., :-2]
-        target = df.to_numpy()[..., -2:]
-        target = target.reshape(-1, sequence_size, 2)
+        if output_size == 1:
+            target = df.to_numpy()[..., -2]
+        else:
+            target = df.to_numpy()[..., -2:]
+        target = target.reshape(-1, sequence_size, output_size)
 
     else:
         data = df.to_numpy()
@@ -169,13 +177,20 @@ def df_to_network_in(df: pd.DataFrame, sequence_size: int, target_mode: bool = T
 
 
 def log_lkh(y_true, y_pred):
-    return -tf.reduce_mean(
-        tf.math.log(1 / (tf.abs(y_pred[..., 1]) * tf.sqrt(2 * np.pi)))
-        - 0.5 * tf.square((y_true[..., 0] - y_pred[..., 0]) / y_pred[..., 1])
-    )
+    if y_pred.shape[-1] < 2:
+        return -tf.reduce_mean(
+            tf.math.log(1 / (tf.abs(y_pred) * tf.sqrt(2 * np.pi)))
+            - 0.5 * tf.square(y_true / y_pred)
+        )
+
+    else:
+        return -tf.reduce_mean(
+            tf.math.log(1 / (tf.abs(y_pred[..., 1]) * tf.sqrt(2 * np.pi)))
+            - 0.5 * tf.square((y_true[..., 0] - y_pred[..., 0]) / y_pred[..., 1])
+        )
 
 
-def build_lstm(input_shape):
+def build_lstm(input_shape: tuple, output_size: int):
     """
     The LSTM neural network for learning streamflow prediction error.
     """
@@ -204,6 +219,6 @@ def build_lstm(input_shape):
     # )
     net.add(tf.keras.layers.Dense(32, activation="selu"))
     # net.add(tf.keras.layers.Dropout(0.1))
-    net.add(tf.keras.layers.Dense(2))
+    net.add(tf.keras.layers.Dense(output_size))
 
     return net
